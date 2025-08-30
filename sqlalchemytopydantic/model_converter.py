@@ -5,18 +5,20 @@ submodule_paths = [os.path.join(os.path.dirname(__file__), 'submodules', 'sqlalc
 for submodule_path in submodule_paths:
     if submodule_path not in sys.path:
         sys.path.append(submodule_path)
+
 from sqlalchemy import create_engine, MetaData, Table
 from sqlalchemy.orm import declarative_base, DeclarativeMeta
 from sqlalchemy_to_json_schema.schema_factory import SchemaFactory, Schema
+from sqlalchemy_to_json_schema.schema_factory import Schema as JsonSchema
 from sqlalchemy_to_json_schema.walkers import StructuralWalker, ForeignKeyWalker 
 from datamodel_code_generator import DataModelType, PythonVersion
-from datamodel_code_generator.model import get_data_model_types, pydantic
+from datamodel_code_generator.model import get_data_model_types
 from datamodel_code_generator.parser.jsonschema import JsonSchemaParser
-from typing import Type
-from pydantic import BaseModel
-import os
+from typing import Type, Any
+from pydantic.v1 import BaseModel
+from pydantic.v1.main import ModelMetaclass
 from pathlib import Path
-
+from abc import ABC
 class CodeExporter:
     """holds a pydantic model's code string and export it to a file."""
     def __init__(self, code_string: str) -> None:
@@ -30,7 +32,11 @@ class CodeExporter:
         Path(output_path).parent.mkdir(parents=True, exist_ok=True)
         with open(output_path, "w") as f:
             f.write(self.__codegen__)
-            
+
+def attach_code_method_to_pydantic_class(cls:BaseModel, code_str:str) -> BaseModel:
+    cls.codegen = CodeExporter(code_str)
+    return cls
+
 def table_to_sqlalchemy(connection_str:str, table:str,schema:str=None) -> type[DeclarativeMeta]:
     """creates a table model from sql db params
 
@@ -43,6 +49,7 @@ def table_to_sqlalchemy(connection_str:str, table:str,schema:str=None) -> type[D
     :return: A SQLAlchemy Representation of your table
     :rtype: DeclarativeMeta
     """
+    
     engine = create_engine(connection_str)
     Base = declarative_base()
     metadata_obj = MetaData()
@@ -53,20 +60,25 @@ def table_to_sqlalchemy(connection_str:str, table:str,schema:str=None) -> type[D
         autoload_with=engine,
         schema=schema
     )
+    table_obj.name
     class TableObj(Base):
         __table__ = table_obj
+        
         Base
     return TableObj
 
-def sqlalchemy_jsonschema(Model:DeclarativeMeta,fk=True) -> Schema:
+def sqlalchemy_jsonschema(Model:DeclarativeMeta,fk=True) -> JsonSchema:
     if fk:
-        walker = ForeignKeyWalker
+        wkr = ForeignKeyWalker
     else:
-        walker = StructuralWalker
-    factory = SchemaFactory(walker)
-    return factory(Model)
+        wkr = StructuralWalker
+    factory = SchemaFactory(wkr)
+    json_schema= factory(Model)
+    json_schema['title'] = Model.__table__.name
+    return json_schema
 
-def jsonschema_pydantic(json_schema:Schema) -> tuple[BaseModel, str]:
+def jsonschema_pydantic(json_schema:JsonSchema|dict[Any,Any]) -> tuple[BaseModel, str]:
+    
     data_model_types = get_data_model_types(
         DataModelType.PydanticBaseModel,
         target_python_version=PythonVersion.PY_312
@@ -82,13 +94,15 @@ def jsonschema_pydantic(json_schema:Schema) -> tuple[BaseModel, str]:
     code_str=parser.parse().replace('from pydantic ','from pydantic.v1 ').replace('from __future__ import annotations\n\n','')
     ex_namespace = {}
     exec(code_str, ex_namespace, ex_namespace)
-    cls=list(parser.sorted_data_models.values())[-1]
+    cls = None
+    for k, v in ex_namespace.items():
+        v_type = type(v)
+        if isinstance(v, ModelMetaclass):
+            cls = v
+    if not cls:
+        raise Exception("Class not found in output")      
     cls.__module__ = __name__
-    return cls, code_str
-
-def attach_code_method_to_pydantic_class(cls:BaseModel, code_str:str) -> BaseModel:
-    cls.code = CodeExporter(code_str)
-    return cls
+    return attach_code_method_to_pydantic_class(cls,code_str)
 
 def sqlalchemy_pydantic(Model:DeclarativeMeta, 
                         fk:bool=True)-> Type[BaseModel]:
@@ -103,15 +117,15 @@ def sqlalchemy_pydantic(Model:DeclarativeMeta,
     :rtype: type[BaseModel]
     """
     json_schema = sqlalchemy_jsonschema(Model, fk)
-    pydantic_schema, pydantic_code = jsonschema_pydantic(json_schema)
-    return attach_code_method_to_pydantic_class(pydantic_schema,pydantic_code)
+    return jsonschema_pydantic(json_schema)
+
+def table_to_pydantic(connection_str:str, table:str,schema:str=None, fk:bool=True) -> BaseModel:
+    sqlalchemy_model=table_to_sqlalchemy(connection_str,table,schema=schema)
+    return sqlalchemy_pydantic(sqlalchemy_model,fk=fk)
 
 if __name__ == '__main__':
-    connection_string="mycooldb://username:pass@localhost:1234/db"
-    tablename="tablename"
-    connection_string="mysql+pymysql://admin:admin@localhost:3306/employees"
-    tablename="employees"
-    MyTable=table_to_sqlalchemy(connection_string,tablename)
+    from sqlalchemytopydantic import DB_CONNECTION_STR
+    MyTable=table_to_sqlalchemy("mysql+pymysql://admin:admin@localhost:3306/employees","employees")
     PydModel=sqlalchemy_pydantic(MyTable)
-    print(PydModel.code)
-    PydModel.code.export('output.py')
+    print(PydModel.codegen)
+    PydModel.codegen.export(rf'example/output/{PydModel.class_name}.py')

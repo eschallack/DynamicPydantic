@@ -9,7 +9,7 @@ class Gender(Enum):
     F = 'F'
 
 
-class TableObj(BaseModel):
+class Employees(BaseModel):
     emp_no: int
     birth_date: date
     first_name: constr(max_length=14)
