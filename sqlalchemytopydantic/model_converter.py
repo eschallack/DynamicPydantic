@@ -96,7 +96,6 @@ def jsonschema_pydantic(json_schema:JsonSchema|dict[Any,Any]) -> tuple[BaseModel
     exec(code_str, ex_namespace, ex_namespace)
     cls = None
     for k, v in ex_namespace.items():
-        v_type = type(v)
         if isinstance(v, ModelMetaclass):
             cls = v
     if not cls:
@@ -122,10 +121,3 @@ def sqlalchemy_pydantic(Model:DeclarativeMeta,
 def table_to_pydantic(connection_str:str, table:str,schema:str=None, fk:bool=True) -> BaseModel:
     sqlalchemy_model=table_to_sqlalchemy(connection_str,table,schema=schema)
     return sqlalchemy_pydantic(sqlalchemy_model,fk=fk)
-
-if __name__ == '__main__':
-    from sqlalchemytopydantic import DB_CONNECTION_STR
-    MyTable=table_to_sqlalchemy("mysql+pymysql://admin:admin@localhost:3306/employees","employees")
-    PydModel=sqlalchemy_pydantic(MyTable)
-    print(PydModel.codegen)
-    PydModel.codegen.export(rf'example/output/{PydModel.class_name}.py')
