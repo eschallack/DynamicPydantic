@@ -1,6 +1,6 @@
-[submodule "sqlalchemytopydantic/submodules/datamodel-code-generator"]
-	path = sqlalchemytopydantic/submodules/datamodel-code-generator
+[submodule "dynamicpydantic/submodules/datamodel-code-generator"]
+	path = dynamicpydantic/submodules/datamodel-code-generator
 	url = https://github.com/koxudaxi/datamodel-code-generator.git
-[submodule "sqlalchemytopydantic/submodules/sqlalchemy-to-json-schema"]
-	path = sqlalchemytopydantic/submodules/sqlalchemy-to-json-schema
+[submodule "dynamicpydantic/submodules/sqlalchemy-to-json-schema"]
+	path = dynamicpydantic/submodules/sqlalchemy-to-json-schema
 	url = https://github.com/expobrain/sqlalchemy-to-json-schema.git
