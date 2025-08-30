@@ -1,4 +1,4 @@
-# SQLAlchemyToPydantic
+# Dynamic Pydantic
 Create Pydantic models from Json Schema to SQLAlchemy models with complex datatypes, dynamically at runtime.
 
 ## Usage
