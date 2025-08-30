@@ -1,19 +1,28 @@
 # SQLAlchemyToPydantic
-Create Pydantic models from SQLAlchemy models with complex datatypes, dynamically at runtime.
+Create Pydantic models from Json Schema to SQLAlchemy models with complex datatypes, dynamically at runtime.
 
 ## Usage
 
-example:
+Quick Example:
 
 ```Python
 from sqlalchemytopydantic import table_to_pydantic, DB_CONNECTION_STR
 
-model=table_to_pydantic(DB_CONNECTION_STR,"employees")
+PydModel=table_to_pydantic(DB_CONNECTION_STR,"employees")
+print(PydModel.__fields__)
+```
+```text
+{'emp_no': ModelField(name='emp_no', type=int, required=True), 'birth_date': ModelField(name='birth_date', type=date, required=True), 'first_name': ModelField(name='first_name', type=ConstrainedStrValue, required=True), 'last_name': ModelField(name='last_name', type=ConstrainedStrValue, required=True), 'gender': ModelField(name='gender', type=Gender, required=True), 'hire_date': ModelField(name='hire_date', type=date, required=True)}
+```
+Code generation Example:
+```Python
+from sqlalchemytopydantic import table_to_pydantic, DB_CONNECTION_STR
 
-print(model.schema_json(indent=2))
-print(model.code)
-PydModel.code.export(rf'example/output/{PydModel.class_name}.py')
-"""
+PydModel=table_to_pydantic(DB_CONNECTION_STR,"employees")
+print(PydModel.codegen)
+PydModel.codegen.export(rf'example/output/{PydModel.__name__}.py')
+```
+```text
 from datetime import date
 from enum import Enum
 
@@ -32,7 +41,7 @@ class Employees(BaseModel):
     last_name: constr(max_length=16)
     gender: Gender
     hire_date: date
-"""
-This library adds a feature the pydantic team would not - the ability to
-[SQLModel](https://sqlmodel.tiangolo.com/)
-[Pydantic-SQLAlchemy](https://github.com/tiangolo/pydantic-sqlalchemy)
+```
+
+This library combines functionality from datamodel-code-generator and sqlalcehmy-to-json-schema to create schemas on the fly with some modifications
+to datamodel-code-generator's parser logic.
