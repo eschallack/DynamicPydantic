@@ -1,5 +1,5 @@
 [project]
-name = "sqlalchemy-test-data-generator"
+name = "dynamicpydantic"
 version = "0.1.0"
 description = ""
 authors = [

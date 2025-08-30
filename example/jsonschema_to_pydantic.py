@@ -1,4 +1,4 @@
-from sqlalchemytopydantic import jsonschema_pydantic
+from dynamicpydantic import jsonschema_pydantic
 json_schema={
     'title': 'employees_auto', 
     'type': 'object', 

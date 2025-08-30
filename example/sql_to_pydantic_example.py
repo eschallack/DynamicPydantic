@@ -1,5 +1,5 @@
 # Example: sql table to pydantic class
-from sqlalchemytopydantic import table_to_pydantic, DB_CONNECTION_STR
+from dynamicpydantic import table_to_pydantic, DB_CONNECTION_STR
 
 PydModel=table_to_pydantic(DB_CONNECTION_STR,"employees")
 print(PydModel.codegen)
